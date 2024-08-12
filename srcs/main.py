@@ -18,7 +18,6 @@ def fetch_rights(driver, title, artist):
     base_url = "https://repertoire.sacem.fr"
     driver.get(base_url)
     
-    # Assure-toi que les éléments sont présents
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "idFullSearch")))
     search_field_title = driver.find_element(By.ID, 'idFullSearch')
     search_field_title.clear()
@@ -28,20 +27,37 @@ def fetch_rights(driver, title, artist):
     search_field_artist.clear()
     search_field_artist.send_keys(artist)
     
-    # Trouver le bouton de recherche et cliquer dessus
     search_button = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.ID, "searchBtn"))
     )
     search_button.click()
     
-    # Attendre que la page avec les résultats se charge
     WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "selecteur_css_pour_les_resultats"))
+        EC.presence_of_element_located((By.CSS_SELECTOR, "section.meaResultats"))
+    )
+
+    # Cibler et cliquer sur le lien "voir le détail"
+    voir_detail_button = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, "//span[@class='btn univ right']/a"))
+    )
+    voir_detail_button.click()
+
+    # Attendre et extraire les informations de la page de détails
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "grid2.borderBoxMod.mod"))
     )
     
-    # Extraction et affichage des résultats (adapter selon le site)
-    results_info = driver.find_element(By.CSS_SELECTOR, 'selecteur_css_pour_les_infos').text
-    print("Résultats trouvés :", results_info)
+    # Trouver tous les éléments <a> contenant les noms/prénoms
+    names_elements = driver.find_elements(By.CSS_SELECTOR, "a.tooltip > span")
+
+    # Extraire les noms et prénoms
+    names = [element.text for element in names_elements]
+
+    print("Noms et prénoms des ayants droit :")
+    for name in names:
+        print(name)
+    
+    return names
 
 def generate_descriptions(csv_file, headless=True):
     driver = setup_driver(headless)
@@ -49,7 +65,9 @@ def generate_descriptions(csv_file, headless=True):
     descriptions = []
     
     for index, row in data.iterrows():
-        fetch_rights(driver, row['Titre'], row['Interprete'])
+        names = fetch_rights(driver, row['Titre'], row['Interprete'])
+        description = f"Titre : {row['Titre']}, Interprète : {row['Interprete']}, Ayants droit : {', '.join(names)}"
+        descriptions.append(description)
     
     driver.quit()
     return descriptions
