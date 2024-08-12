@@ -1,5 +1,9 @@
 SRCDIR = srcs
 
+OUTDIR = output
+
+SCREENDIR = screenshots
+
 MAIN = main.py
 
 SOURCES = $(wildcard $(SRCDIR)/*.py)
@@ -10,5 +14,7 @@ run:
 clean:
 	find $(SRCDIR) -name '*.pyc' -delete
 	find $(SRCDIR) -name '__pycache__' -type d -exec rm -rf {} +
+	rm -rf $(OUTDIR)
+	rm -rf $(SCREENDIR)
 
 re: clean run
