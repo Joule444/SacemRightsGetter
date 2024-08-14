@@ -5,6 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 def setup_driver(headless=True):
     chrome_options = Options()
@@ -21,7 +22,7 @@ def ensure_directory_exists(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-def fetch_rights(driver, title, artist, timeout=1):
+def fetch_rights(driver, title, artist, timeout=2):
     base_url = "https://repertoire.sacem.fr"
     driver.get(base_url)
     
@@ -64,9 +65,15 @@ def fetch_rights(driver, title, artist, timeout=1):
         names = [element.text.strip() for element in names_elements if element.text.strip()]
         formatted_names = [name.title() for name in names]
         return formatted_names
+    
+    # Capturer des exceptions spécifiques pour éviter les stacktraces
+    except (TimeoutException, NoSuchElementException) as e:
+        print(f"Error searching for '{title} - {artist}': Element not found or timed out.")
+        return ["No results found for this search"]
+    
     except Exception as e:
-        print(f"Erreur lors de la recherche pour '{title} - {artist}': {str(e)}")
-        return ["Aucun résultat trouvé pour cette recherche"]
+        print(f"An unexpected error occurred while searching for '{title} - {artist}': {str(e)}")
+        return ["No results found due to an unexpected error"]
 
 def generate_descriptions(csv_file, headless=True):
     driver = setup_driver(headless)
@@ -74,18 +81,20 @@ def generate_descriptions(csv_file, headless=True):
     try:
         data = pd.read_csv(csv_file)
     except pd.errors.EmptyDataError:
-        print(f"Erreur : Le fichier '{csv_file}' est vide.")
+        print(f"Error: The file '{csv_file}' is empty.")
         return []
 
     if data.empty:
-        print(f"Erreur : Le fichier '{csv_file}' est vide.")
+        print(f"Error: The file '{csv_file}' is empty.")
         return []
 
     descriptions = []
     
     for index, row in data.iterrows():
-        names = fetch_rights(driver, row['Titre'], row['Interprete'])
-        description = f"\"{row['Titre']}\" - {row['Interprete']} ({', '.join(names)})"
+        title = row['Title'] if pd.notna(row['Title']) else ""
+        artist = row['Artist'] if pd.notna(row['Artist']) else ""
+        names = fetch_rights(driver, title, artist)
+        description = f"\"{title}\" - {artist} ({', '.join(names)})"
         descriptions.append(description)
     
     driver.quit()
